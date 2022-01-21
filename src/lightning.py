@@ -51,6 +51,10 @@ class Regressor(pl.LightningModule):
         self.criterion = criterion
         self.FM_accuracy = torchmetrics.Accuracy()
 
+    def _histogram_logger(self):
+        for name, params in self.named_parameters():
+            self.logger.experiment.add_histogram(name, params, self.current_epoch)  # type:ignore
+
     def configure_optimizers(self):
         # scheduler = CosineAnnealingLR(opt, T_max=10)
         # return [opt], [scheduler]
@@ -75,6 +79,7 @@ class Regressor(pl.LightningModule):
     def training_epoch_end(self, outputs: EPOCH_OUTPUT):
         avg_loss = torch.stack([x["loss"] for x in outputs]).mean()  # type:ignore
         self.logger.log_metrics({"avg_train_loss": avg_loss}, self.current_epoch)  # type:ignore
+        self._histogram_logger()
 
     def validation_epoch_end(self, outputs: EPOCH_OUTPUT):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()  # type:ignore
