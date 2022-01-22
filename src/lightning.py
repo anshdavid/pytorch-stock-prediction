@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from tkinter.tix import Tree
+from typing import Dict
 import torch.nn as nn
 import torch
 import pytorch_lightning as pl
@@ -43,7 +44,9 @@ class Multivariate(nn.Module):
 
 
 class Regressor(pl.LightningModule):
-    def __init__(self, model: nn.Module, criterion: nn.modules.loss._Loss, learningRate: float) -> None:
+    def __init__(
+        self, model: nn.Module, criterion: nn.modules.loss._Loss, learningRate: float, params: Dict
+    ) -> None:
         super().__init__()
 
         self.model = model
@@ -51,14 +54,17 @@ class Regressor(pl.LightningModule):
         self.criterion = criterion
         self.FM_accuracy = torchmetrics.Accuracy()
 
+        self.save_hyperparameters()
+
     def _histogram_logger(self):
         for name, params in self.named_parameters():
             self.logger.experiment.add_histogram(name, params, self.current_epoch)  # type:ignore
 
     def configure_optimizers(self):
-        # scheduler = CosineAnnealingLR(opt, T_max=10)
-        # return [opt], [scheduler]
         return torch.optim.Adam(self.parameters(), lr=self.learningRate)
+
+    # def on_train_start(self) -> None:
+    #     self.logger.log_hyperparams(self.hparams, {"hp/val_loss": 0})  # type:ignore
 
     def training_step(self, batch, batch_idx):
         # sourcery skip: class-extract-method
@@ -68,6 +74,7 @@ class Regressor(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         loss, acc = self._shared_eval_step(batch, batch_idx)
+        self.log("val_loss", loss)
         self.logger.log_metrics({"val_loss": loss}, self.global_step)  # type:ignore
         return {"val_loss": loss}
 
@@ -89,7 +96,7 @@ class Regressor(pl.LightningModule):
         x, y = batch
         y_hat = self.model(x)
 
-        # y = y.unsqueeze(1)
+        y = y.flatten()
         y_hat = y_hat.flatten()
 
         # return self.criterion(y_hat.float(), y.float())
