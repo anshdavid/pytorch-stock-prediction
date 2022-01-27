@@ -49,6 +49,9 @@ In the above diagram, each line carries an entire vector, from the output of one
 * [References](#references)
 
 # Config
+
+[`config.json`](config.json) 
+
     {
         "module.data": {
             "file": "data/processed/GOOG.csv",
